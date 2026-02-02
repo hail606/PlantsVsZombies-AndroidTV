@@ -38,57 +38,18 @@ jobs:
           distribution: temurin
           cache: gradle
 
-                        # 【修正版】从根目录复制分卷文件并解压
-      - name: Restore and unpack assets
+      # 【简化版】仅验证资源文件是否存在
+      - name: Verify assets
         run: |
-          echo "=== 1. 检查根目录的文件 ==="
-          ls -la *.z* *.zip 2>/dev/null || echo "未找到zip分卷文件"
-          
-          echo "=== 2. 确保目标目录存在 ==="
-          mkdir -p app/src/main
-          
-          echo "=== 3. 复制分卷文件到工作目录 ==="
-          # 复制所有assets分卷文件到app/src/main/
-          cp assets.* app/src/main/ 2>/dev/null || true
-          cp *.z* app/src/main/ 2>/dev/null || true
-          cp *.zip app/src/main/ 2>/dev/null || true
-          
-          echo "=== 4. 进入工作目录并处理 ==="
-          cd app/src/main
-          echo "当前目录：$(pwd)"
-          echo "目录内容："
-          ls -la
-          
-          echo "=== 5. 安装必要工具 ==="
-          sudo apt-get update
-          sudo apt-get install -y zip unzip
-          
-          echo "=== 6. 尝试修复并合并分卷 ==="
-          # 方法A：使用zip修复功能（针对WinRAR分卷）
-          zip -FR assets_fixed.zip assets.zip 2>&1 | head -20
-          
-          echo "=== 7. 解压文件 ==="
-          if [ -f "assets_fixed.zip" ]; then
-            echo "解压修复后的文件..."
-            unzip -o assets_fixed.zip -d . 2>&1 | head -20
+          echo "检查资源文件..."
+          if [ -d "app/src/main/assets" ] && [ -n "$(ls -A app/src/main/assets 2>/dev/null)" ]; then
+            echo "✅ Assets目录存在且非空"
+            echo "文件数量：$(find app/src/main/assets -type f | wc -l)"
           else
-            echo "尝试直接解压原始zip..."
-            unzip -o assets.zip -d . 2>&1 | head -20
-          fi
-          
-          echo "=== 8. 验证结果 ==="
-          if [ -d "assets" ] && [ -n "$(ls -A assets 2>/dev/null)" ]; then
-            echo "✅ Assets目录解压成功！"
-            echo "文件数量：$(find assets -type f | wc -l)"
-          else
-            echo "❌ Assets目录解压失败或为空！"
-            echo "最后尝试：列出所有可能的相关文件..."
-            find . -name "assets*" -type f | head -20
-            echo "当前目录完整列表："
-            ls -laR . 2>/dev/null | head -50
+            echo "❌ Assets目录不存在或为空！"
             exit 1
           fi
-          
+
       - name: Decode keystore
         if: matrix.build_type == 'Release'
         env:
