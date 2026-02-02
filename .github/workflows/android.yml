@@ -38,45 +38,48 @@ jobs:
           distribution: temurin
           cache: gradle
 
-            # 【修改后的步骤】手动合并WinRAR分卷并解压
+                  # 【终极方案】使用zip命令正确处理WinRAR分卷
       - name: Restore and unpack assets
         run: |
           cd app/src/main
-          echo "列出当前目录下的所有文件："
+          echo "=== 检查当前目录的文件 ==="
           ls -la
-          echo "寻找assets分卷文件："
+          echo "=== 检查assets分卷文件 ==="
           ls -la assets.*
           
-          # 方法1：尝试直接使用unzip命令（如果主zip文件可用）
-          # 如果失败，则尝试方法2
+          # 1. 安装必要的工具
+          sudo apt-get update
+          sudo apt-get install -y zip unzip
           
-          # 方法2：手动合并所有分卷（适用于WinRAR的.z01, .z02格式）
-          # 注意：合并顺序很重要！必须先.z01, .z02... 最后是.zip
-          # 根据你实际的分卷文件名调整下面的cat命令顺序
-          cat assets.z01 assets.z02 assets.zip > assets_combined.zip 2>/dev/null || true
+          # 2. 使用zip命令的-FR选项修复并合并分卷
+          # -F 尝试修复存档
+          # -FR 修复并重建分卷存档（关键参数！）
+          echo "正在尝试修复并合并分卷ZIP文件..."
+          zip -FR assets_fixed.zip assets.zip
           
-          # 尝试解压合并后的文件
-          if [ -f "assets_combined.zip" ]; then
-            echo "尝试解压合并后的文件..."
-            unzip -o assets_combined.zip -d .
+          # 3. 解压修复后的文件
+          echo "正在解压修复后的文件..."
+          unzip -o assets_fixed.zip -d .
+          
+          # 4. 验证结果
+          if [ -d "assets" ]; then
+            echo "✅ Assets目录解压成功！"
+            echo "找到文件数量："
+            find assets -type f | wc -l
+            echo "前几个文件："
+            find assets -type f | head -10
           else
-            # 如果合并失败，尝试直接解压原始zip（可能分卷不完整）
-            echo "尝试直接解压原始zip文件..."
+            echo "❌ Assets目录解压失败！"
+            echo "尝试备选方案：直接解压原始zip..."
+            # 最后的尝试：直接解压
             unzip -o assets.zip -d . || {
-              echo "解压失败！请检查分卷文件是否完整上传。"
+              echo "彻底失败！请检查："
+              echo "1. 分卷文件是否全部上传完整"
+              echo "2. 文件是否在传输中损坏"
               exit 1
             }
           fi
           
-          # 验证解压结果
-          if [ -d "assets" ]; then
-            echo "✅ Assets目录解压成功！"
-            echo "目录结构示例："
-            find assets -type f | head -20
-          else
-            echo "❌ Assets目录解压失败！"
-            exit 1
-          fi
       - name: Decode keystore
         if: matrix.build_type == 'Release'
         env:
