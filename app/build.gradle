@@ -34,7 +34,8 @@ android {
         versionNameSuffix = '-' + new Date().format("yyMMdd")
 
         ndk {
-            abiFilters "armeabi-v7a"
+            // 修改这一行，添加 arm64-v8a
+             abiFilters "arm64-v8a"
         }
     }
 
